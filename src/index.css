@@ -1,0 +1,12 @@
+/* アプリ本体の見た目は SleepDiary.jsx 内の <style> が持つ。
+   ここでは背景色を画面全体に行き渡らせるための最低限だけを置く。 */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #151827;
+}
