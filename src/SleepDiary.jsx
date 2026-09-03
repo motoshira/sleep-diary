@@ -1,27 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
-import { loadEntries, saveEntries, clearEntries } from "./storage.js";
+import {
+  clearEntries,
+  deleteEntry,
+  fetchStats,
+  importLegacyEntries,
+  listEntries,
+  saveEntry,
+} from "./api.js";
+import { analyze, pad, relToClock } from "./shared/sleep.js";
 
 /* ---------- time helpers ---------- */
-const pad = (n) => String(n).padStart(2, "0");
-
 const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
-// 記録日(起床日)の午前0時を基準にした分。12時以降の時刻は前夜とみなして負の値になる。
-const toRel = (hhmm) => {
-  if (!hhmm) return null;
-  const [h, m] = hhmm.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const v = h * 60 + m;
-  return h >= 12 ? v - 1440 : v;
-};
-
-const relToClock = (rel) => {
-  let v = Math.round(rel) % 1440;
-  if (v < 0) v += 1440;
-  return `${pad(Math.floor(v / 60))}:${pad(v % 60)}`;
 };
 
 const fmtDur = (min) => {
@@ -41,22 +32,6 @@ const fmtDate = (iso) => {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
   return `${m}/${d} ${WEEK[dt.getDay()]}`;
-};
-
-/* ---------- sleep math ---------- */
-const analyze = (e) => {
-  const bed = toRel(e.bedTime);
-  const wake = toRel(e.wakeTime);
-  const out = toRel(e.outTime || e.wakeTime);
-  if (bed == null || wake == null || out == null) return null;
-
-  let tib = out - bed;
-  if (tib <= 0) tib += 1440;
-  let window = wake - bed;
-  if (window <= 0) window += 1440;
-
-  const tst = Math.max(0, window - (e.latency || 0) - (e.waso || 0));
-  return { bed, wake, out, tib, tst, eff: tib > 0 ? (tst / tib) * 100 : 0 };
 };
 
 const TAGS = ["カフェイン", "飲酒", "運動", "昼寝", "夜更かし"];
@@ -147,6 +122,7 @@ function NightChart({ entries }) {
 /* ---------- app ---------- */
 export default function SleepDiary({ user, onLogout }) {
   const [entries, setEntries] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState(blankEntry());
@@ -160,21 +136,35 @@ export default function SleepDiary({ user, onLogout }) {
   useEffect(() => {
     (async () => {
       try {
-        setEntries(await loadEntries(user.sub));
+        await importLegacyEntries(user.sub);
+        setEntries(await listEntries());
+        setStats(await fetchStats());
       } catch {
-        // 未保存の状態。空で開始する。
+        setError("記録を読み込めませんでした。通信の状態をご確認ください。");
       } finally {
         setLoading(false);
       }
     })();
   }, [user.sub]);
 
-  const persist = async (next) => {
+  const refreshStats = async () => {
+    try {
+      setStats(await fetchStats());
+    } catch {
+      // 集計は表示だけなので、取れなければ前の値のままにする。
+    }
+  };
+
+  // 画面を先に更新し、サーバー側が失敗したら元に戻す。
+  const commit = async (next, action) => {
+    const prev = entries;
     setEntries(next);
     try {
-      await saveEntries(user.sub, next);
+      await action();
       setError("");
+      await refreshStats();
     } catch {
+      setEntries(prev);
       setError("保存できませんでした。もう一度お試しください。");
     }
   };
@@ -189,18 +179,6 @@ export default function SleepDiary({ user, onLogout }) {
     [entries]
   );
 
-  const stats = useMemo(() => {
-    const recent = sorted.slice(0, 7).map(analyze).filter(Boolean);
-    if (!recent.length) return null;
-    const avg = (f) => recent.reduce((s, r) => s + f(r), 0) / recent.length;
-    return {
-      n: recent.length,
-      tst: avg((r) => r.tst),
-      eff: avg((r) => r.eff),
-      wake: avg((r) => r.wake),
-    };
-  }, [sorted]);
-
   const save = () => {
     if (!analyze(form)) {
       setError("就床時刻と起床時刻を入れてください。");
@@ -208,7 +186,7 @@ export default function SleepDiary({ user, onLogout }) {
     }
     const rec = { ...form, id: form.id || `${form.date}-${Date.now()}` };
     const next = [...entries.filter((e) => e.id !== rec.id && e.date !== rec.date), rec];
-    persist(next);
+    commit(next, () => saveEntry(rec));
     setForm(blankEntry());
     setOpen(false);
     flash("記録しました");
@@ -221,7 +199,7 @@ export default function SleepDiary({ user, onLogout }) {
   };
 
   const remove = (id) => {
-    persist(entries.filter((e) => e.id !== id));
+    commit(entries.filter((e) => e.id !== id), () => deleteEntry(id));
     if (form.id === id) {
       setForm(blankEntry());
       setOpen(false);
@@ -306,12 +284,7 @@ export default function SleepDiary({ user, onLogout }) {
       return;
     }
     setConfirmClear(false);
-    try {
-      await clearEntries(user.sub);
-    } catch {
-      /* 未保存なら無視 */
-    }
-    setEntries([]);
+    await commit([], clearEntries);
     flash("すべて削除しました");
   };
 

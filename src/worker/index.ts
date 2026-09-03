@@ -1,4 +1,5 @@
 import { handleAuthRoutes } from "./auth/index.js";
+import { handleEntryRoutes } from "./entries/index.js";
 
 /**
  * Workers のエントリポイント。
@@ -12,8 +13,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
-      const authResponse = await handleAuthRoutes(request, env);
-      if (authResponse) return authResponse;
+      const response =
+        (await handleAuthRoutes(request, env)) ?? (await handleEntryRoutes(request, env));
+      if (response) return response;
       return Response.json({ error: "Not Found" }, { status: 404 });
     }
 

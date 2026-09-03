@@ -9,13 +9,30 @@
     // ビルド成果物に一致しないパスは index.html を返す（SPA のため）
     "not_found_handling": "single-page-application"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sleep-diary",
+      // `wrangler d1 create sleep-diary` で作った ID に置き換える
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
   "observability": {
     "enabled": true
   },
   "env": {
     // プレビュー環境。`wrangler deploy --env preview` で sleep-diary-preview にデプロイされる
     "preview": {
-      "name": "sleep-diary-preview"
+      "name": "sleep-diary-preview",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sleep-diary-preview",
+          "database_id": "REPLACE_WITH_YOUR_PREVIEW_D1_DATABASE_ID",
+          "migrations_dir": "migrations"
+        }
+      ]
     }
   }
 }

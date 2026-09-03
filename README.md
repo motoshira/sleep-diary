@@ -66,3 +66,30 @@ wrangler secret put SESSION_SECRET --env=""   # openssl rand -base64 32
 | GET | `/api/auth/callback` | コードを交換し ID トークンを検証してセッション Cookie を発行 |
 | POST | `/api/auth/logout` | セッション Cookie を破棄 |
 | GET | `/api/me` | ログイン中のユーザー。未ログインなら 401 |
+
+## データの保存（D1）
+
+記録は Cloudflare D1 に保存され、`user_id`（Google の `sub`）で分離される。1日1件で、同じ日付を保存すると上書きされる。
+
+### 準備
+
+```sh
+wrangler d1 create sleep-diary          # 出力された database_id を wrangler.jsonc に書く
+bun run db:migrate:local                # ローカルの D1 にマイグレーションを適用
+bun run db:migrate                      # デプロイ先の D1 に適用
+```
+
+`main` への push では GitHub Actions がデプロイ前にマイグレーションを適用する。
+
+### エンドポイント
+
+| メソッド | パス | 内容 |
+| --- | --- | --- |
+| GET | `/api/entries` | 自分の記録を新しい順に返す |
+| PUT | `/api/entries` | 記録を保存する（同じ日付があれば上書き） |
+| DELETE | `/api/entries/:id` | 1件削除 |
+| DELETE | `/api/entries` | 全件削除 |
+| POST | `/api/entries/import` | localStorage に残っていた記録の取り込み |
+| GET | `/api/stats` | 直近7日の平均（睡眠時間・睡眠効率・起床時刻） |
+
+睡眠時間の計算は `src/shared/sleep.js` に置き、サーバーの集計とクライアントの表示で共有している。

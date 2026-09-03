@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "deploy": "bun run build && wrangler deploy --env=\"\"",
     "deploy:preview": "bun run build && wrangler deploy --env preview",
-    "start": "bun run build && wrangler dev --env=\"\""
+    "start": "bun run build && wrangler dev --env=\"\"",
+    "db:migrate:local": "wrangler d1 migrations apply sleep-diary --env=\"\" --local",
+    "db:migrate": "wrangler d1 migrations apply sleep-diary --env=\"\" --remote"
   },
   "dependencies": {
     "react": "^19.2.8",
