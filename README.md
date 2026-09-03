@@ -33,6 +33,26 @@ bun run deploy:preview  # preview 環境へデプロイ
 | `CLOUDFLARE_API_TOKEN` | Workers の編集権限を持つ API トークン |
 | `CLOUDFLARE_ACCOUNT_ID` | デプロイ先アカウントの ID |
 
+## Basic 認証
+
+デプロイ先はまだ一般公開しないので、サイト全体に Basic 認証をかけている。アプリのユーザー認証ではなく、単なる目隠し。
+
+```sh
+wrangler secret put BASIC_AUTH_USER --env=""
+wrangler secret put BASIC_AUTH_PASSWORD --env=""
+```
+
+secret は環境ごとに持つので、preview 環境にも別途入れる。
+
+```sh
+wrangler secret put BASIC_AUTH_USER --env preview
+wrangler secret put BASIC_AUTH_PASSWORD --env preview
+```
+
+- **secret を入れ忘れると 503 を返す。** 設定漏れでサイト全体が素通しになるより、開かないほうが安全なため
+- `wrangler.jsonc` の `run_worker_first: true` で静的アセットへのリクエストも Worker を通している。これを外すと HTML や JS が Basic 認証を通らずに配信される
+- ローカルで動かすときは `.dev.vars` に同じ 2 つを書く（`.dev.vars.example` を参照）
+
 ## Google ログイン
 
 記録は Google アカウント（ID トークンの `sub`）ごとに分かれる。
