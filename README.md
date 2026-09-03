@@ -51,9 +51,38 @@ wrangler secret put BASIC_AUTH_PASSWORD --env preview
 
 - **secret を入れ忘れると 503 を返す。** 設定漏れでサイト全体が素通しになるより、開かないほうが安全なため
 - `wrangler.jsonc` の `run_worker_first: true` で静的アセットへのリクエストも Worker を通している。これを外すと HTML や JS が Basic 認証を通らずに配信される
-- ローカルで動かすときは `.dev.vars` に同じ 2 つを書く（`.dev.vars` は commit しない）
+- ローカルで動かすときは `.dev.vars` に同じ 2 つを書く（`.dev.vars.example` を参照）
 
+## Google ログイン
+
+記録は Google アカウント（ID トークンの `sub`）ごとに分かれる。
+
+### 1. OAuth クライアントを作る
+
+Google Cloud コンソールの「APIとサービス → 認証情報」で OAuth 2.0 クライアント ID（種別: ウェブアプリケーション）を作り、承認済みのリダイレクト URI に以下を登録する。
+
+- `http://localhost:8787/api/auth/callback`（ローカル開発）
+- `https://<デプロイ先のドメイン>/api/auth/callback`
+
+### 2. 秘密情報を設定する
+
+ローカルは `.dev.vars.example` を `.dev.vars` にコピーして値を入れる。デプロイ先には wrangler で登録する。
+
+```sh
+wrangler secret put GOOGLE_CLIENT_ID --env=""
+wrangler secret put GOOGLE_CLIENT_SECRET --env=""
+wrangler secret put SESSION_SECRET --env=""   # openssl rand -base64 32
 ```
-BASIC_AUTH_USER="..."
-BASIC_AUTH_PASSWORD="..."
-```
+
+### 3. ローカルで動かす
+
+`bun run dev`（Vite）は `/api/*` を `http://localhost:8787` の Worker に転送する。別のターミナルで `wrangler dev` を起動しておく。OAuth のリダイレクト先を揃えるなら、`bun run start` で Worker 側（8787）だけを使うほうが確実。
+
+### エンドポイント
+
+| メソッド | パス | 内容 |
+| --- | --- | --- |
+| GET | `/api/auth/login` | Google の認可画面へリダイレクト（state + PKCE） |
+| GET | `/api/auth/callback` | コードを交換し ID トークンを検証してセッション Cookie を発行 |
+| POST | `/api/auth/logout` | セッション Cookie を破棄 |
+| GET | `/api/me` | ログイン中のユーザー。未ログインなら 401 |

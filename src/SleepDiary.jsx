@@ -145,7 +145,7 @@ function NightChart({ entries }) {
 }
 
 /* ---------- app ---------- */
-export default function SleepDiary() {
+export default function SleepDiary({ user, onLogout }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -160,19 +160,19 @@ export default function SleepDiary() {
   useEffect(() => {
     (async () => {
       try {
-        setEntries(await loadEntries());
+        setEntries(await loadEntries(user.sub));
       } catch {
         // 未保存の状態。空で開始する。
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user.sub]);
 
   const persist = async (next) => {
     setEntries(next);
     try {
-      await saveEntries(next);
+      await saveEntries(user.sub, next);
       setError("");
     } catch {
       setError("保存できませんでした。もう一度お試しください。");
@@ -307,7 +307,7 @@ export default function SleepDiary() {
     }
     setConfirmClear(false);
     try {
-      await clearEntries();
+      await clearEntries(user.sub);
     } catch {
       /* 未保存なら無視 */
     }
@@ -328,8 +328,6 @@ export default function SleepDiary() {
     <div className="app">
       <style>{`
         .app{
-          --night:#151827; --raised:#1E2237; --line:#2C3150;
-          --text:#E9E7F2; --muted:#8D93B4; --moon:#EBC98C; --dusk:#6E77C4;
           background:var(--night); color:var(--text); min-height:100%;
           font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
           padding:22px 18px 56px; -webkit-font-smoothing:antialiased;
@@ -338,6 +336,9 @@ export default function SleepDiary() {
         .title{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
           font-size:26px; font-weight:400; letter-spacing:.02em; margin:0;}
         .sub{color:var(--muted); font-size:13px; margin:4px 0 22px;}
+        .account{display:flex; align-items:center; justify-content:flex-end; gap:8px;
+          margin-bottom:10px;}
+        .account-name{font-size:12px; color:var(--muted);}
 
         .chart{position:relative; margin-bottom:26px;}
         .chart-grid{position:absolute; left:52px; right:38px; top:0; bottom:34px;}
@@ -420,6 +421,11 @@ export default function SleepDiary() {
           padding:9px 16px; border-radius:999px; font-size:13px;}
         @media (prefers-reduced-motion:reduce){.app *{transition:none !important;}}
       `}</style>
+
+      <div className="account">
+        <span className="account-name">{user.name}</span>
+        <button className="icon" onClick={onLogout}>ログアウト</button>
+      </div>
 
       <h1 className="title">睡眠日誌</h1>
       <p className="sub">起きた朝に、昨夜のことを書き留める。</p>

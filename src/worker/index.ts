@@ -1,3 +1,4 @@
+import { handleAuthRoutes } from "./auth/index.js";
 import { checkBasicAuth } from "./lib/basic-auth.js";
 
 /**
@@ -5,7 +6,7 @@ import { checkBasicAuth } from "./lib/basic-auth.js";
  *
  * wrangler.jsonc で run_worker_first を有効にしているため、静的アセットへの
  * リクエストもここを通る。まず Basic 認証で全体を閉じ、通ったものだけを
- * API と SPA に振り分ける。今は API を持たないので、/api/* は 404 を返す。
+ * /api/* と SPA に振り分ける。
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -15,6 +16,8 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname.startsWith("/api/")) {
+      const authResponse = await handleAuthRoutes(request, env);
+      if (authResponse) return authResponse;
       return Response.json({ error: "Not Found" }, { status: 404 });
     }
 
