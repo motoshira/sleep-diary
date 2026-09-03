@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sleep-diary",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // ビルド成果物に一致しないパスは index.html を返す（SPA のため）
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "env": {
+    // プレビュー環境。`wrangler deploy --env preview` で sleep-diary-preview にデプロイされる
+    "preview": {
+      "name": "sleep-diary-preview"
+    }
+  }
+}
