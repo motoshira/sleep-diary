@@ -2,8 +2,11 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+
+# main への push は deploy.yml が typecheck と build を通してからデプロイするので、
+# ここでは PR だけを見る。
+permissions:
+  contents: read
 
 jobs:
   build:

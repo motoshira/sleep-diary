@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# デプロイは Cloudflare の API トークンで行うため GITHUB_TOKEN は読み取りだけでよい。
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
