@@ -1,5 +1,15 @@
 /* アプリ本体の見た目は SleepDiary.jsx 内の <style> が持つ。
-   ここでは背景色を画面全体に行き渡らせるための最低限だけを置く。 */
+   ここには全体の下地と、ログイン画面だけが使う最小限のスタイルを置く。 */
+:root {
+  --night: #151827;
+  --raised: #1e2237;
+  --line: #2c3150;
+  --text: #e9e7f2;
+  --muted: #8d93b4;
+  --moon: #ebc98c;
+  --dusk: #6e77c4;
+}
+
 html,
 body,
 #root {
@@ -8,5 +18,60 @@ body,
 
 body {
   margin: 0;
-  background: #151827;
+  background: var(--night);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.gate {
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 22vh 24px 0;
+  text-align: center;
+}
+
+.gate-title {
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin: 0 0 12px;
+}
+
+.gate-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+  margin: 0 0 26px;
+  padding: 22px 24px 0;
+  text-align: center;
+}
+
+.gate .gate-note {
+  padding: 0;
+}
+
+.gate-error {
+  color: #f0917e;
+  font-size: 12px;
+  margin: -14px 0 18px;
+}
+
+.gate-btn {
+  width: 100%;
+  background: var(--moon);
+  color: #221a0b;
+  border: 1px solid var(--moon);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.gate-btn:focus-visible {
+  outline: 2px solid var(--dusk);
+  outline-offset: 2px;
 }
