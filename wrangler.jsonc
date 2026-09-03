@@ -13,8 +13,7 @@
     {
       "binding": "DB",
       "database_name": "sleep-diary",
-      // `wrangler d1 create sleep-diary` で作った ID に置き換える
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "163c9102-671f-4503-be8e-bef925ed830e",
       "migrations_dir": "migrations"
     }
   ],
@@ -29,7 +28,7 @@
         {
           "binding": "DB",
           "database_name": "sleep-diary-preview",
-          "database_id": "REPLACE_WITH_YOUR_PREVIEW_D1_DATABASE_ID",
+          "database_id": "7b1c85ab-fc5c-4600-b120-3f5b7cee5f60",
           "migrations_dir": "migrations"
         }
       ]
