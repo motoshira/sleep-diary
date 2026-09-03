@@ -1,0 +1,5 @@
+# ローカル開発用。.dev.vars にコピーして値を入れる（.dev.vars は commit しない）
+GOOGLE_CLIENT_ID="xxxxxxxx.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="xxxxxxxx"
+# openssl rand -base64 32 などで生成する
+SESSION_SECRET="xxxxxxxx"
