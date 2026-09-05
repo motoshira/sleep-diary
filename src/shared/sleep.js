@@ -5,13 +5,38 @@
 
 export const pad = (n) => String(n).padStart(2, "0");
 
-// 記録日(起床日)の午前0時を基準にした分。12時以降の時刻は前夜とみなして負の値になる。
+/** 24時以降の表記をどこまで許すか。丸2日を跨ぐ入力は打ち間違いとみなす。 */
+export const MAX_HOUR = 47;
+
+/**
+ * 時刻を「その日の0時からの分」に直す。「25:30」のような24時以降の表記も受け取る。
+ * 区切りなしの「2530」も同じものとして扱う（数字キーパッドで打ちやすいため）。
+ * 読めなければ null。
+ */
+export const toMinutes = (input) => {
+  if (typeof input !== "string") return null;
+  const m = /^(\d{1,2}):?([0-5]\d)$/.exec(input.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  if (h > MAX_HOUR) return null;
+  return h * 60 + Number(m[2]);
+};
+
+/** 入力を保存できる "HH:MM" に整える。24時以降はその表記のまま残す。読めなければ null。 */
+export const normalizeTime = (input) => {
+  const v = toMinutes(input);
+  return v == null ? null : `${pad(Math.floor(v / 60))}:${pad(v % 60)}`;
+};
+
+/**
+ * 記録日(起床日)の午前0時を基準にした分。12時以降の時刻は前夜とみなして負の値になり、
+ * 24時以降の表記（25:30 など）はそのまま起床日の朝として正の値になる。
+ * 昼まで眠った朝のように 12時の境目を越える時刻は、36:00 のように書けば表せる。
+ */
 export const toRel = (hhmm) => {
-  if (!hhmm) return null;
-  const [h, m] = hhmm.split(":").map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const v = h * 60 + m;
-  return h >= 12 ? v - 1440 : v;
+  const v = toMinutes(hhmm);
+  if (v == null) return null;
+  return v >= 720 ? v - 1440 : v;
 };
 
 export const relToClock = (rel) => {

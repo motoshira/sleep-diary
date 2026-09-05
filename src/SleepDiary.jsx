@@ -7,7 +7,7 @@ import {
   listEntries,
   saveEntry,
 } from "./api.js";
-import { analyze, pad, relToClock } from "./shared/sleep.js";
+import { analyze, normalizeTime, pad, relToClock } from "./shared/sleep.js";
 
 /* ---------- time helpers ---------- */
 const todayISO = () => {
@@ -35,6 +35,8 @@ const fmtDate = (iso) => {
 };
 
 const TAGS = ["カフェイン", "飲酒", "運動", "昼寝", "夜更かし"];
+
+const TIME_FIELDS = ["bedTime", "wakeTime", "outTime"];
 
 const blankEntry = () => ({
   id: null,
@@ -180,11 +182,15 @@ export default function SleepDiary({ user, onLogout }) {
   );
 
   const save = () => {
-    if (!analyze(form)) {
-      setError("就床時刻と起床時刻を入れてください。");
+    const tidy = { ...form };
+    for (const k of TIME_FIELDS) {
+      if (tidy[k]) tidy[k] = normalizeTime(tidy[k]) || tidy[k];
+    }
+    if (!analyze(tidy) || TIME_FIELDS.some((k) => tidy[k] && !normalizeTime(tidy[k]))) {
+      setError("時刻は 23:30 や 25:30（深夜1時30分）のように入れてください。");
       return;
     }
-    const rec = { ...form, id: form.id || `${form.date}-${Date.now()}` };
+    const rec = { ...tidy, id: tidy.id || `${tidy.date}-${Date.now()}` };
     const next = [...entries.filter((e) => e.id !== rec.id && e.date !== rec.date), rec];
     commit(next, () => saveEntry(rec));
     setForm(blankEntry());
@@ -289,6 +295,15 @@ export default function SleepDiary({ user, onLogout }) {
   };
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // 入力から離れた時点で "HH:MM" に整える。読めない間は打ちかけとみなして触らない。
+  const tidyTime = (k) => () =>
+    setForm((f) => {
+      const v = normalizeTime(f[k]);
+      return v && v !== f[k] ? { ...f, [k]: v } : f;
+    });
+  const badTime = (k) => (form[k] && !normalizeTime(form[k]) ? " bad" : "");
+
   const toggleTag = (t) =>
     setForm((f) => ({
       ...f,
@@ -361,6 +376,9 @@ export default function SleepDiary({ user, onLogout }) {
           color:var(--text); border-radius:7px; padding:9px 10px; font-size:15px;
           font-family:inherit; width:100%;}
         .field input:focus, .field textarea:focus{outline:none; border-color:var(--dusk);}
+        .field input.bad{border-color:#F0917E;}
+        .hint{font-size:11px; color:var(--muted); margin:-4px 0 14px;}
+        .hint b{color:var(--text); font-weight:600; font-variant-numeric:tabular-nums;}
         .quality{display:flex; gap:6px;}
         .q{flex:1; padding:9px 0; border-radius:7px; border:1px solid var(--line);
           background:transparent; color:var(--muted); cursor:pointer; font-size:13px;}
@@ -443,13 +461,17 @@ export default function SleepDiary({ user, onLogout }) {
               <div className="grid2">
                 <div className="field">
                   <label htmlFor="bt">床に入った時刻</label>
-                  <input id="bt" type="time" value={form.bedTime}
-                    onChange={(e) => set("bedTime")(e.target.value)} />
+                  <input id="bt" type="text" inputMode="numeric" placeholder="23:30"
+                    className={badTime("bedTime").trim()} value={form.bedTime}
+                    onChange={(e) => set("bedTime")(e.target.value)}
+                    onBlur={tidyTime("bedTime")} />
                 </div>
                 <div className="field">
                   <label htmlFor="wt">目が覚めた時刻</label>
-                  <input id="wt" type="time" value={form.wakeTime}
-                    onChange={(e) => set("wakeTime")(e.target.value)} />
+                  <input id="wt" type="text" inputMode="numeric" placeholder="07:00"
+                    className={badTime("wakeTime").trim()} value={form.wakeTime}
+                    onChange={(e) => set("wakeTime")(e.target.value)}
+                    onBlur={tidyTime("wakeTime")} />
                 </div>
                 <div className="field">
                   <label htmlFor="lt">寝つくまで（分）</label>
@@ -463,10 +485,16 @@ export default function SleepDiary({ user, onLogout }) {
                 </div>
               </div>
 
+              <p className="hint">
+                24時をまたぐ時刻は <b>25:30</b>（深夜1時30分）のようにも書けます。
+              </p>
+
               <div className="field">
                 <label htmlFor="ot">床を離れた時刻（空欄なら起床時刻と同じ）</label>
-                <input id="ot" type="time" value={form.outTime}
-                  onChange={(e) => set("outTime")(e.target.value)} />
+                <input id="ot" type="text" inputMode="numeric" placeholder="07:20"
+                  className={badTime("outTime").trim()} value={form.outTime}
+                  onChange={(e) => set("outTime")(e.target.value)}
+                  onBlur={tidyTime("outTime")} />
               </div>
 
               <div className="field">

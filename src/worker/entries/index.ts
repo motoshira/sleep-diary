@@ -1,5 +1,5 @@
 import { withUser } from "../auth/index.js";
-import { summarize } from "../../shared/sleep.js";
+import { normalizeTime, summarize } from "../../shared/sleep.js";
 import {
   deleteAllEntries,
   deleteEntry,
@@ -10,7 +10,6 @@ import {
 import type { Entry } from "./repository.js";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME = /^\d{2}:\d{2}$/;
 const MAX_IMPORT = 2000;
 
 class BadRequest extends Error {}
@@ -29,12 +28,14 @@ function parseEntry(input: unknown): Entry {
   const date = String(e.date ?? "");
   if (!DATE.test(date)) throw new BadRequest("date が不正です");
 
-  const bedTime = String(e.bedTime ?? "");
-  const wakeTime = String(e.wakeTime ?? "");
-  if (!TIME.test(bedTime) || !TIME.test(wakeTime)) throw new BadRequest("時刻が不正です");
+  // 24時以降の表記（25:30 など）も受け取り、"HH:MM" に揃えてから保存する。
+  const bedTime = normalizeTime(String(e.bedTime ?? ""));
+  const wakeTime = normalizeTime(String(e.wakeTime ?? ""));
+  if (!bedTime || !wakeTime) throw new BadRequest("時刻が不正です");
 
-  const outTime = e.outTime ? String(e.outTime) : "";
-  if (outTime && !TIME.test(outTime)) throw new BadRequest("outTime が不正です");
+  const raw = e.outTime ? String(e.outTime) : "";
+  const outTime = raw ? normalizeTime(raw) : "";
+  if (outTime == null) throw new BadRequest("outTime が不正です");
 
   const tags = Array.isArray(e.tags) ? e.tags.slice(0, 20).map((t) => String(t).slice(0, 40)) : [];
   const id = e.id ? String(e.id).slice(0, 64) : `${date}-${Date.now()}`;
