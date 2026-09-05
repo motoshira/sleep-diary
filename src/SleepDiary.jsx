@@ -52,14 +52,24 @@ const blankEntry = () => ({
 });
 
 /* ---------- timeline ---------- */
-const AX_START = -360; // 18:00
-const AX_END = 720; // 12:00
-const AX_SPAN = AX_END - AX_START;
-const pct = (rel) => ((Math.min(AX_END, Math.max(AX_START, rel)) - AX_START) / AX_SPAN) * 100;
+// 横軸は既定で 18:00〜12:00。24時以降の表記で書かれた夜がここに収まらないときは、
+// はみ出した分だけ目盛りの単位で広げる。狭めはしないので、普段の見え方は変わらない。
+const AX_MIN = -360; // 18:00
+const AX_MAX = 720; // 12:00
+const AX_TICK = 180; // 3時間ごと
+
+const axisRange = (shown) => {
+  let lo = AX_MIN;
+  let hi = AX_MAX;
+  for (const { a, sleepStart } of shown) {
+    lo = Math.min(lo, a.bed, sleepStart);
+    hi = Math.max(hi, a.wake, a.out);
+  }
+  return [Math.floor(lo / AX_TICK) * AX_TICK, Math.ceil(hi / AX_TICK) * AX_TICK];
+};
 
 function NightChart({ entries }) {
   const rows = entries.slice(0, 14).reverse();
-  const ticks = [-360, -180, 0, 180, 360, 540, 720];
 
   if (!rows.length) {
     return (
@@ -70,6 +80,17 @@ function NightChart({ entries }) {
     );
   }
 
+  const shown = rows
+    .map((e) => ({ e, a: analyze(e) }))
+    .filter(({ a }) => a)
+    .map((r) => ({ ...r, sleepStart: r.a.bed + (r.e.latency || 0) }));
+
+  const [lo, hi] = axisRange(shown);
+  const pct = (rel) => ((Math.min(hi, Math.max(lo, rel)) - lo) / (hi - lo)) * 100;
+
+  const ticks = [];
+  for (let t = lo; t <= hi; t += AX_TICK) ticks.push(t);
+
   return (
     <div className="chart">
       <div className="chart-grid" aria-hidden="true">
@@ -78,31 +99,26 @@ function NightChart({ entries }) {
         ))}
       </div>
 
-      {rows.map((e) => {
-        const a = analyze(e);
-        if (!a) return null;
-        const sleepStart = a.bed + (e.latency || 0);
-        return (
-          <div key={e.id} className="night-row">
-            <span className="night-label">{fmtDate(e.date)}</span>
-            <div className="night-track">
-              <span
-                className="bar-bed"
-                style={{ left: `${pct(a.bed)}%`, width: `${pct(a.out) - pct(a.bed)}%` }}
-              />
-              <span
-                className="bar-sleep"
-                style={{
-                  left: `${pct(sleepStart)}%`,
-                  width: `${Math.max(0.8, pct(a.wake) - pct(sleepStart))}%`,
-                  opacity: 0.45 + (e.quality || 3) * 0.11,
-                }}
-              />
-            </div>
-            <span className="night-dur">{(a.tst / 60).toFixed(1)}h</span>
+      {shown.map(({ e, a, sleepStart }) => (
+        <div key={e.id} className="night-row">
+          <span className="night-label">{fmtDate(e.date)}</span>
+          <div className="night-track">
+            <span
+              className="bar-bed"
+              style={{ left: `${pct(a.bed)}%`, width: `${pct(a.out) - pct(a.bed)}%` }}
+            />
+            <span
+              className="bar-sleep"
+              style={{
+                left: `${pct(sleepStart)}%`,
+                width: `${Math.max(0.8, pct(a.wake) - pct(sleepStart))}%`,
+                opacity: 0.45 + (e.quality || 3) * 0.11,
+              }}
+            />
           </div>
-        );
-      })}
+          <span className="night-dur">{(a.tst / 60).toFixed(1)}h</span>
+        </div>
+      ))}
 
       <div className="axis" aria-hidden="true">
         {ticks.map((t) => (
