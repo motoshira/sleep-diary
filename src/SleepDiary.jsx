@@ -153,10 +153,23 @@ export default function SleepDiary({ user, onLogout }) {
 
   useEffect(() => {
     (async () => {
+      // 取り込みは移行のための処理なので、失敗しても一覧の読み込みは続ける。
+      // localStorage は取り込めたときだけ消えるので、次に開けばまた試される。
+      let importFailed = false;
       try {
         await importLegacyEntries(user.sub);
+      } catch {
+        importFailed = true;
+      }
+
+      try {
         setEntries(await listEntries());
         setStats(await fetchStats());
+        if (importFailed) {
+          setError(
+            "このブラウザに残っていた古い記録は取り込めませんでした。次に開いたときにもう一度試します。"
+          );
+        }
       } catch {
         setError("記録を読み込めませんでした。通信の状態をご確認ください。");
       } finally {
